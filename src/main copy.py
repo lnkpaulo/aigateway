@@ -61,7 +61,20 @@ async def forward_request(
     payload: Dict[str, Any],
     stream: bool,
 ) -> Response:
+    """
+    Forward the request to the specified Ollama endpoint.
+
+    Args:
+        endpoint (str): The Ollama API endpoint to forward to (e.g., "/api/generate", "/api/chat").
+        payload (Dict[str, Any]): The JSON payload to send in the request.
+        stream (bool): Whether to handle streaming responses.
+
+    Returns:
+        Response: The FastAPI Response object to return to the client.
+    """
+    # Construct the full URL for the Ollama endpoint
     url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
+
     logging.debug(f"Forwarding request to {url} with payload: {payload}")
 
     try:
@@ -87,7 +100,6 @@ async def forward_request(
                 stream_response(), media_type="application/json"
             )
         else:
-            # Non-streaming response
             async with httpx.AsyncClient(timeout=None) as client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
@@ -95,32 +107,22 @@ async def forward_request(
 
                 content = await response.aread()
                 content_text = content.decode("utf-8")
-                logging.debug(f"Response content from Ollama: {content_text}")
 
-                try:
-                    json_obj = json.loads(content_text)
-                    # Extract the assistant's reply from the correct field
-                    if 'response' in json_obj:
-                        responses = json_obj['response']
-                    elif 'choices' in json_obj:
-                        responses = ''.join(
-                            choice.get('message', {}).get('content', '') for choice in json_obj['choices']
-                        )
-                    elif 'message' in json_obj:
-                        responses = json_obj['message'].get('content', '')
-                    else:
-                        logging.error("Could not find response content in Ollama's response")
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Invalid response format from Ollama",
-                        )
-                except json.JSONDecodeError as e:
-                    logging.error(f"JSON decoding error: {e}")
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Invalid JSON response from Ollama",
-                    )
+                json_objects = []
+                for line in content_text.strip().split("\n"):
+                    if line.strip():
+                        try:
+                            json_obj = json.loads(line)
+                            json_objects.append(json_obj)
+                        except json.JSONDecodeError as e:
+                            logging.error(f"JSON decoding error: {e}")
+                            raise HTTPException(
+                                status_code=500,
+                                detail="Invalid JSON response from Ollama",
+                            )
 
+                # Aggregate the 'response' fields
+                responses = "".join(obj.get("response", "") for obj in json_objects)
                 return JSONResponse(
                     content={"response": responses}, status_code=response.status_code
                 )
@@ -139,8 +141,6 @@ async def forward_request(
     except Exception as e:
         logging.error(f"Unhandled exception: {e}")
         raise HTTPException(status_code=500, detail="Request forwarding failed")
-
-
 
 # Route handlers
 @app.post("/generate")
