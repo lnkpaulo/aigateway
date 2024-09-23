@@ -1,7 +1,8 @@
 import logging
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import httpx
 from fastapi.responses import JSONResponse, StreamingResponse
 import json
@@ -15,6 +16,16 @@ app = FastAPI()
 FORWARD_URL = "http://localhost:11434/api/generate"
 AUTH_TOKEN = "your_secret_token"
 
+# Define the HTTPBearer security scheme
+security_scheme = HTTPBearer(auto_error=False)
+
+# Authentication Dependency
+async def get_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
+    if credentials and credentials.scheme == "Bearer" and credentials.credentials == AUTH_TOKEN:
+        return credentials.credentials
+    else:
+        raise HTTPException(status_code=401, detail="Invalid or missing token")
+    
 class GenerateRequest(BaseModel):
     model: str
     prompt: str
@@ -25,13 +36,9 @@ class GenerateRequest(BaseModel):
         extra = "allow"
 
 @app.post("/generate")
-async def generate(request_data: GenerateRequest, x_token: str = Header(...)):
+async def generate(request_data: GenerateRequest, api_key: str = Depends(get_api_key)):
     logging.debug(f"Received request with data: {request_data}")
-    logging.debug(f"Received token: {x_token}")
-
-    # Check token
-    if x_token != AUTH_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid or missing token")
+    # Token has been validated; proceed with the logic
 
     # Prepare payload for forwarding
     payload = request_data.dict(exclude_unset=True)
