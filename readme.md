@@ -1,4 +1,5 @@
-## STREAM= False
+
+### STREAM= False
 
 ```
 curl -v -X 'POST' \
@@ -8,7 +9,7 @@ curl -v -X 'POST' \
   -d "{\"model\":\"llama3.1\",\"prompt\":\"Why is the sky blue?\"}"
 ```
 
-## STREAM= True
+### STREAM= True
 
 ```
 curl -v -X 'POST' \

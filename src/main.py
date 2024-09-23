@@ -2,6 +2,7 @@ import logging
 from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 from typing import Dict, Any, Optional
 import httpx
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -12,16 +13,22 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI()
 
-# Configuration - forward URL and token
-FORWARD_URL = "http://localhost:11434/api/generate"
-AUTH_TOKEN = "your_secret_token"
+# Settings class
+class Settings(BaseSettings):
+    AUTH_TOKEN: str
+    FORWARD_URL: str
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
 
 # Define the HTTPBearer security scheme
 security_scheme = HTTPBearer(auto_error=False)
 
 # Authentication Dependency
 async def get_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    if credentials and credentials.scheme == "Bearer" and credentials.credentials == AUTH_TOKEN:
+    if credentials and credentials.scheme == "Bearer" and credentials.credentials == settings.AUTH_TOKEN:
         return credentials.credentials
     else:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
@@ -54,7 +61,7 @@ async def generate(request_data: GenerateRequest, api_key: str = Depends(get_api
             # Function to yield data from Ollama stream
             async def stream_response():
                 async with httpx.AsyncClient(timeout=None) as client:
-                    async with client.stream("POST", FORWARD_URL, json=payload) as response:
+                    async with client.stream("POST", settings.FORWARD_URL, json=payload) as response:
                         if response.status_code != 200:
                             logging.error(f"Failed to fetch streaming data: {response.status_code}")
                             raise HTTPException(status_code=response.status_code, detail=response.text)
@@ -68,7 +75,7 @@ async def generate(request_data: GenerateRequest, api_key: str = Depends(get_api
         # If stream is False or not set, handle regular request
         else:
             async with httpx.AsyncClient(timeout=None) as client:
-                response = await client.post(FORWARD_URL, json=payload)
+                response = await client.post(settings.FORWARD_URL, json=payload)
                 response.raise_for_status()  # Raise an error for non-2xx responses
                 logging.debug(f"Response from Ollama: {response.status_code}")
 
