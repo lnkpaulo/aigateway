@@ -56,22 +56,89 @@ class ChatRequest(BaseRequest):
     messages: List[Dict[str, str]]
 
 # Helper function to forward requests
+# async def forward_request(
+#     endpoint: str,
+#     payload: Dict[str, Any],
+#     stream: bool,
+# ) -> Response:
+#     url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
+#     logging.debug(f"Forwarding request to {url} with payload: {payload}")
+
+#     try:
+#         client = httpx.AsyncClient(timeout=None)  # Keep client open for streaming
+#         if stream:
+#             logging.debug("Streaming response enabled.")
+
+#             async def stream_response():
+#                 try:
+#                     async with client.stream("POST", url, json=payload) as response:
+#                         response.raise_for_status()
+#                         if response.status_code != 200:
+#                             logging.error(
+#                                 f"Failed to fetch streaming data: {response.status_code}"
+#                             )
+#                             error_content = await response.aread()
+#                             raise HTTPException(
+#                                 status_code=response.status_code,
+#                                 detail=error_content.decode(),
+#                             )
+#                         # Stream the content directly to the client
+#                         async for chunk in response.aiter_bytes():
+#                             yield chunk
+#                 finally:
+#                     await client.aclose()  # Close the client after streaming is done
+
+#             return StreamingResponse(
+#                 stream_response(),
+#                 media_type="application/json",
+#             )
+#         else:
+#             # Non-streaming response
+#             async with client:
+#                 response = await client.post(url, json=payload)
+#                 response.raise_for_status()
+#                 logging.debug(f"Response from Ollama: {response.status_code}")
+#                 # Return the response content directly
+#                 return Response(
+#                     content=response.content,
+#                     status_code=response.status_code,
+#                     # headers=response.headers,  # Include headers from Ollama
+#                     media_type=response.headers.get("Content-Type", "application/json"),
+#                 )
+#     except httpx.HTTPStatusError as exc:
+#         error_content = await exc.response.aread()
+#         logging.error(
+#             f"Error response {exc.response.status_code} from Ollama: {error_content.decode()}"
+#         )
+#         raise HTTPException(
+#             status_code=exc.response.status_code, detail=error_content.decode()
+#         )
+#     except httpx.RequestError as exc:
+#         logging.error(f"Request forwarding failed: {exc}")
+#         raise HTTPException(
+#             status_code=500, detail=f"Request forwarding failed: {exc}"
+#         )
+#     except Exception as e:
+#         logging.error(f"Unhandled exception: {e}")
+#         raise HTTPException(status_code=500, detail="Request forwarding failed")
+
 async def forward_request(
     endpoint: str,
     payload: Dict[str, Any],
     stream: bool,
+    method: str = "POST"  # Default to POST, but can be set to GET
 ) -> Response:
     url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
     logging.debug(f"Forwarding request to {url} with payload: {payload}")
 
     try:
-        client = httpx.AsyncClient(timeout=None)  # Keep client open for streaming
+        client = httpx.AsyncClient(timeout=None)
         if stream:
             logging.debug("Streaming response enabled.")
 
             async def stream_response():
                 try:
-                    async with client.stream("POST", url, json=payload) as response:
+                    async with client.stream(method, url, json=payload) as response:
                         response.raise_for_status()
                         if response.status_code != 200:
                             logging.error(
@@ -82,27 +149,28 @@ async def forward_request(
                                 status_code=response.status_code,
                                 detail=error_content.decode(),
                             )
-                        # Stream the content directly to the client
                         async for chunk in response.aiter_bytes():
                             yield chunk
                 finally:
-                    await client.aclose()  # Close the client after streaming is done
+                    await client.aclose()
 
             return StreamingResponse(
                 stream_response(),
                 media_type="application/json",
             )
         else:
-            # Non-streaming response
             async with client:
-                response = await client.post(url, json=payload)
+                # Choose GET or POST based on the method parameter
+                if method == "GET":
+                    response = await client.get(url)  # GET request for /tags
+                else:
+                    response = await client.post(url, json=payload)  # POST request for other endpoints
+                
                 response.raise_for_status()
                 logging.debug(f"Response from Ollama: {response.status_code}")
-                # Return the response content directly
                 return Response(
                     content=response.content,
                     status_code=response.status_code,
-                    # headers=response.headers,  # Include headers from Ollama
                     media_type=response.headers.get("Content-Type", "application/json"),
                 )
     except httpx.HTTPStatusError as exc:
@@ -121,7 +189,6 @@ async def forward_request(
     except Exception as e:
         logging.error(f"Unhandled exception: {e}")
         raise HTTPException(status_code=500, detail="Request forwarding failed")
-
 
 
 
@@ -184,4 +251,20 @@ async def embed(
         endpoint="/api/embed",
         payload=payload,
         stream=False  # Embedding requests typically aren't streamed
+    )
+
+@app.get("/tags")
+async def tags(api_key: str = Depends(get_api_key)):
+    """
+    Get the list of available models from Ollama's /api/tags endpoint.
+    """
+    username = token_manager.get_user_by_token(api_key)
+    logging.debug(f"Tags request made by user: {username}")
+
+    # Forward the request using the GET method
+    return await forward_request(
+        endpoint="/api/tags",
+        payload={},  # No payload for GET requests
+        stream=False,  # No streaming for /tags
+        method="GET"  # Use GET for this request
     )
