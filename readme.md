@@ -1,30 +1,41 @@
 # AI Gateway
 
-This project is a FastAPI application that acts as a gateway to the Ollama AI API, forwarding requests to endpoints like `/api/generate` and `/api/chat`. It supports multiple users with unique authentication tokens and handles both streaming and non-streaming responses.
+This project is a FastAPI application that acts as a gateway to the Ollama AI API, forwarding requests to endpoints like `/api/generate`, `/api/chat`, `/api/embed`, and `/api/tags`. It supports multiple users with unique authentication tokens and handles both streaming and non-streaming responses.
 
 ## Features
 
-- **Multiple Endpoints**: Supports `/generate` and `/chat` endpoints.
+- **Multiple Endpoints**: Supports `/generate`, `/chat`, `/embed`, and `/tags` endpoints.
 - **Authentication**: Uses the `Authorization` header with the `Bearer` token scheme.
 - **Multiple Users**: Supports different authentication tokens for different users via a local token store.
 - **Streaming Responses**: Handles both streaming and non-streaming responses from the Ollama API.
+- **Dynamic HTTP Methods**: Supports both `POST` and `GET` requests depending on the endpoint.
 - **Configuration**: Reads configuration from a `.env` file and manages user tokens via `tokens.json`.
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Setup Instructions](#setup-instructions)
-- [Running the Application](#running-the-application)
-- [Testing the Endpoints](#testing-the-endpoints)
-  - [Generate Endpoint](#generate-endpoint)
-  - [Chat Endpoint](#chat-endpoint)
-- [Examples](#examples)
-  - [Generate Text](#generate-text)
-  - [Chat Conversation](#chat-conversation)
-- [Token Management](#token-management)
-- [Security Considerations](#security-considerations)
-- [Future Enhancements](#future-enhancements)
-- [License](#license)
+- [AI Gateway](#ai-gateway)
+  - [Features](#features)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Setup Instructions](#setup-instructions)
+  - [Running the Application](#running-the-application)
+  - [Endpoints](#endpoints)
+    - [Generate Endpoint](#generate-endpoint)
+    - [Chat Endpoint](#chat-endpoint)
+    - [Embed Endpoint](#embed-endpoint)
+    - [Tags Endpoint](#tags-endpoint)
+  - [Examples](#examples)
+    - [Generate Text](#generate-text)
+      - [Non-Streaming Request](#non-streaming-request)
+      - [Streaming Request](#streaming-request)
+    - [Chat Conversation](#chat-conversation)
+      - [Non-Streaming Chat](#non-streaming-chat)
+      - [Streaming Chat](#streaming-chat)
+    - [Get Model Tags](#get-model-tags)
+  - [Token Management](#token-management)
+  - [Security Considerations](#security-considerations)
+  - [Future Enhancements](#future-enhancements)
+  - [License](#license)
 
 ## Prerequisites
 
@@ -54,12 +65,6 @@ This project is a FastAPI application that acts as a gateway to the Ollama AI AP
    pip install -r requirements.txt
    ```
 
-   **Note:** If `requirements.txt` doesn't exist, install the necessary packages manually:
-
-   ```bash
-   pip install fastapi uvicorn httpx pydantic pydantic-settings
-   ```
-
 4. **Create a `.env` File**
 
    Create a `.env` file in the project root directory with the following content:
@@ -85,30 +90,19 @@ This project is a FastAPI application that acts as a gateway to the Ollama AI AP
 
    Replace the tokens with secure, unique tokens for each user.
 
-6. **Update `.gitignore`**
-
-   Ensure that sensitive files are not committed to version control by adding them to your `.gitignore`:
-
-   ```gitignore
-   # .gitignore
-   .env
-   tokens.json
-   ```
 
 ## Running the Application
 
-Start the FastAPI application using Uvicorn:
+Start the FastAPI application using run.sh:
 
 ```bash
-uvicorn main:app --reload
+./run.sh
 ```
 
-- **`main`**: The name of your Python file without the `.py` extension (e.g., `main.py`).
-- **`--reload`**: Enables auto-reload on code changes (useful during development).
-
 The application will be accessible at `http://localhost:8000`.
+The application api documentation will be accessible at `http://localhost:8000/docs`.
 
-## Testing the Endpoints
+## Endpoints
 
 ### Generate Endpoint
 
@@ -120,6 +114,18 @@ The application will be accessible at `http://localhost:8000`.
 
 - **URL**: `http://localhost:8000/chat`
 - **Method**: `POST`
+- **Authentication**: Required (`Authorization: Bearer <token>`)
+
+### Embed Endpoint
+
+- **URL**: `http://localhost:8000/embed`
+- **Method**: `POST`
+- **Authentication**: Required (`Authorization: Bearer <token>`)
+
+### Tags Endpoint
+
+- **URL**: `http://localhost:8000/tags`
+- **Method**: `GET`
 - **Authentication**: Required (`Authorization: Bearer <token>`)
 
 ## Examples
@@ -161,7 +167,7 @@ curl -X POST 'http://localhost:8000/generate' \
 
 **Note:** By omitting `"stream": false`, the request defaults to streaming mode.
 
-**Expected Behavior:**
+**Expected Behavior**:
 
 - The response is streamed back to the client incrementally.
 
@@ -210,9 +216,51 @@ curl -X POST 'http://localhost:8000/chat' \
       }'
 ```
 
-**Expected Behavior:**
+**Expected Behavior**:
 
 - The assistant's reply is streamed back to the client.
+
+### Get Model Tags
+
+```bash
+curl -X GET 'http://localhost:8000/tags' \
+  -H 'Authorization: Bearer token_for_user1'
+```
+
+**Expected Response:**
+
+```json
+{
+  "models": [
+    {
+      "name": "codellama:13b",
+      "modified_at": "2023-11-04T14:56:49.277302595-07:00",
+      "size": 7365960935,
+      "digest": "9f438cb9cd581fc025612d27f7c1a6669ff83a8bb0ed86c94fcf4c5440555697",
+      "details": {
+        "format": "gguf",
+        "family": "llama",
+        "families": null,
+        "parameter_size": "13B",
+        "quantization_level": "Q4_0"
+      }
+    },
+    {
+      "name": "llama3:latest",
+      "modified_at": "2023-12-07T09:32:18.757212583-08:00",
+      "size": 3825819519,
+      "digest": "fe938a131f40e6f6d40083c9f0f430a515233eb2edaa6d72eb85c50d64f2300e",
+      "details": {
+        "format": "gguf",
+        "family": "llama",
+        "families": null,
+        "parameter_size": "7B",
+        "quantization_level": "Q4_0"
+      }
+    }
+  ]
+}
+```
 
 ## Token Management
 
@@ -220,19 +268,19 @@ curl -X POST 'http://localhost:8000/chat' \
 - **Removing Users**: Remove the user's entry from the `tokens.json` file.
 - **Token Validation**: Tokens are validated against the entries in `tokens.json`.
 
-**Note:** Remember to restart the application after modifying `tokens.json` or implement a token reload mechanism if tokens change frequently.
+**Note:** The application reloads the token each time an api is called. No need to restart the application after modifying `tokens.json`
 
 ## Security Considerations
 
-- **Protect Sensitive Files**: Ensure that `.env` and `tokens.json` are not committed to version control or exposed publicly.
 - **Use Secure Tokens**: Generate strong, unique tokens for each user.
 - **HTTPS**: Consider running the application over HTTPS in production environments.
 - **Authentication**: All endpoints require authentication using the `Authorization` header with the `Bearer` scheme.
 
 ## Future Enhancements
 
+- **Source Code**: Optimize source code to improve performance and maintenance. 
 - **Database Integration**: Replace `tokens.json` with a database for better scalability and security.
-- **Additional Endpoints**: Support more Ollama API endpoints like `/embed`.
+- **Additional Endpoints**: Support more Ollama API endpoints.
 - **User Management**: Implement user registration, token generation, and revocation endpoints.
 - **Error Handling**: Enhance error messages and logging for better diagnostics.
 - **Rate Limiting**: Add rate limiting per user to prevent abuse.
