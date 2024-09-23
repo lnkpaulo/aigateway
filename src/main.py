@@ -160,3 +160,28 @@ async def chat(
         payload=payload,
         stream=request_data.stream,
     )
+
+class EmbedRequest(BaseModel):
+    model: str
+    input: str
+    extra_params: Dict[str, Any] = {}
+
+    class Config:
+        extra = "allow"
+
+@app.post("/embed")
+async def embed(
+    request_data: EmbedRequest, api_key: str = Depends(get_api_key)
+):
+    username = token_manager.get_user_by_token(api_key)
+    logging.debug(f"Embed request made by user: {username}")
+
+    # Prepare payload for forwarding
+    payload = request_data.dict(exclude_unset=True)
+    payload.update(request_data.extra_params)
+
+    return await forward_request(
+        endpoint="/api/embed",
+        payload=payload,
+        stream=False  # Embedding requests typically aren't streamed
+    )
