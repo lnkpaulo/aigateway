@@ -65,71 +65,53 @@ async def forward_request(
     logging.debug(f"Forwarding request to {url} with payload: {payload}")
 
     try:
+        client = httpx.AsyncClient(timeout=None)  # Keep client open for streaming
         if stream:
             logging.debug("Streaming response enabled.")
 
             async def stream_response():
-                async with httpx.AsyncClient(timeout=None) as client:
+                try:
                     async with client.stream("POST", url, json=payload) as response:
+                        response.raise_for_status()
                         if response.status_code != 200:
                             logging.error(
                                 f"Failed to fetch streaming data: {response.status_code}"
                             )
+                            error_content = await response.aread()
                             raise HTTPException(
                                 status_code=response.status_code,
-                                detail=response.text,
+                                detail=error_content.decode(),
                             )
-
+                        # Stream the content directly to the client
                         async for chunk in response.aiter_bytes():
                             yield chunk
+                finally:
+                    await client.aclose()  # Close the client after streaming is done
 
             return StreamingResponse(
-                stream_response(), media_type="application/json"
+                stream_response(),
+                media_type="application/json",
             )
         else:
             # Non-streaming response
-            async with httpx.AsyncClient(timeout=None) as client:
+            async with client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
                 logging.debug(f"Response from Ollama: {response.status_code}")
-
-                content = await response.aread()
-                content_text = content.decode("utf-8")
-                logging.debug(f"Response content from Ollama: {content_text}")
-
-                try:
-                    json_obj = json.loads(content_text)
-                    # Extract the assistant's reply from the correct field
-                    if 'response' in json_obj:
-                        responses = json_obj['response']
-                    elif 'choices' in json_obj:
-                        responses = ''.join(
-                            choice.get('message', {}).get('content', '') for choice in json_obj['choices']
-                        )
-                    elif 'message' in json_obj:
-                        responses = json_obj['message'].get('content', '')
-                    else:
-                        logging.error("Could not find response content in Ollama's response")
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Invalid response format from Ollama",
-                        )
-                except json.JSONDecodeError as e:
-                    logging.error(f"JSON decoding error: {e}")
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Invalid JSON response from Ollama",
-                    )
-
-                return JSONResponse(
-                    content={"response": responses}, status_code=response.status_code
+                # Return the response content directly
+                return Response(
+                    content=response.content,
+                    status_code=response.status_code,
+                    # headers=response.headers,  # Include headers from Ollama
+                    media_type=response.headers.get("Content-Type", "application/json"),
                 )
     except httpx.HTTPStatusError as exc:
+        error_content = await exc.response.aread()
         logging.error(
-            f"Error response {exc.response.status_code} from Ollama: {exc.response.text}"
+            f"Error response {exc.response.status_code} from Ollama: {error_content.decode()}"
         )
         raise HTTPException(
-            status_code=exc.response.status_code, detail=exc.response.text
+            status_code=exc.response.status_code, detail=error_content.decode()
         )
     except httpx.RequestError as exc:
         logging.error(f"Request forwarding failed: {exc}")
@@ -139,6 +121,8 @@ async def forward_request(
     except Exception as e:
         logging.error(f"Unhandled exception: {e}")
         raise HTTPException(status_code=500, detail="Request forwarding failed")
+
+
 
 
 
