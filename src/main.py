@@ -34,6 +34,8 @@ security_scheme = HTTPBearer(auto_error=False)
 
 # Authentication Dependency
 async def get_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
+    logging.debug(f"get_api_key() called with credentials: {credentials}")
+
     if credentials and credentials.scheme == "Bearer":
         if token_manager.validate_token(credentials.credentials):
             return credentials.credentials
@@ -97,33 +99,19 @@ async def forward_request(
                 content_text = content.decode("utf-8")
                 logging.debug(f"Response content from Ollama: {content_text}")
 
+                # Parse the JSON content
                 try:
                     json_obj = json.loads(content_text)
-                    # Extract the assistant's reply from the correct field
-                    if 'response' in json_obj:
-                        responses = json_obj['response']
-                    elif 'choices' in json_obj:
-                        responses = ''.join(
-                            choice.get('message', {}).get('content', '') for choice in json_obj['choices']
-                        )
-                    elif 'message' in json_obj:
-                        responses = json_obj['message'].get('content', '')
-                    else:
-                        logging.error("Could not find response content in Ollama's response")
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Invalid response format from Ollama",
-                        )
                 except json.JSONDecodeError as e:
                     logging.error(f"JSON decoding error: {e}")
                     raise HTTPException(
                         status_code=500,
                         detail="Invalid JSON response from Ollama",
                     )
-
-                return JSONResponse(
-                    content={"response": responses}, status_code=response.status_code
-                )
+                
+                # Return the parsed JSON as a JSONResponse
+                return JSONResponse(content=json_obj, status_code=response.status_code)
+            
     except httpx.HTTPStatusError as exc:
         logging.error(
             f"Error response {exc.response.status_code} from Ollama: {exc.response.text}"
@@ -143,7 +131,7 @@ async def forward_request(
 
 
 # Route handlers
-@app.post("/generate")
+@app.post("/api/generate")
 async def generate(
     request_data: GenerateRequest, api_key: str = Depends(get_api_key)
 ):
@@ -160,7 +148,7 @@ async def generate(
         stream=request_data.stream,
     )
 
-@app.post("/chat")
+@app.post("/api/chat")
 async def chat(
     request_data: ChatRequest, api_key: str = Depends(get_api_key)
 ):

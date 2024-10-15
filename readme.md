@@ -170,11 +170,11 @@ curl -X POST 'http://localhost:8000/generate' \
 #### Non-Streaming Chat
 
 ```bash
-curl -X POST 'http://localhost:8000/chat' \
+curl -X POST 'http://localhost:8000/api/chat' \
   -H 'Authorization: Bearer token_for_user1' \
   -H 'Content-Type: application/json' \
   -d '{
-        "model": "llama3.1",
+        "model": "llama3.2",
         "messages": [
           {
             "role": "user",
