@@ -163,3 +163,4 @@ cython_debug/
 
 # Ignore tokens file
 tokens.json
+tokens.db

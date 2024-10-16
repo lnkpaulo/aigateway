@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 from typing import Dict, Any, Optional, List
 from fastapi.responses import JSONResponse, StreamingResponse
+from models import Settings
 
 # Import TokenManager
 from token_manager import TokenManager
@@ -19,13 +20,6 @@ app = FastAPI()
 
 # Initialize TokenManager
 token_manager = TokenManager()
-
-# Settings class
-class Settings(BaseSettings):
-    OLLAMA_BASE_URL: str
-
-    class Config:
-        env_file = ".env"
 
 settings = Settings()
 
