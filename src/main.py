@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from models import Settings
 
 # Import TokenManager
-from token_manager import TokenManager
+from libs.token_manager import TokenManager
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)

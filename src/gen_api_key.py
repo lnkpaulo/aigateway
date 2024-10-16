@@ -1,6 +1,6 @@
-# # gen_api_key.py
+# gen_api_key.py
 import sys
-from token_manager import TokenManager
+from libs.token_manager import TokenManager
 from colorama import init, Fore, Style
 
 # Initialize colorama
@@ -56,3 +56,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
