@@ -1,23 +1,31 @@
-# ollama_llamaindex.py
-import httpx
+# tests/llamaindex/ollama_llamaindex.py
 from llama_index.llms.ollama import Ollama
 from llama_index.core.llms import ChatMessage
+from ollama import Client
+# from ...src.models import Settings
+from src.models import Settings
 
-# Your API key/token
-API_KEY = "token_for_user1"
+
+settings = Settings()
+
+# API key/token
+API_KEY = settings.CLI_API_KEY_Test
 
 
-# Initialize the Ollama instance and pass the API key via **kwargs
-llm = Ollama(
-    # base_url="http://localhost:8000",
-    model="llama3.2",
-    request_timeout=60.0,
+# Create an Ollama Client instance with the headers set
+client = Client(
+    host="http://localhost:8000",
+    headers={
+        'Authorization': f'Bearer {API_KEY}',
+        'Content-Type': 'application/json',
+    },
+    timeout=60.0,  # Adjust timeout if needed
 )
 
-# Set the Authorization header on the internal client
-# llm.client._client.headers.update({
-#     "Authorization": f"Bearer {API_KEY}"
-# })
+llm = Ollama(
+    client=client,
+    model="llama3.2",
+)
 
 #Chat
 # messages = [
@@ -28,7 +36,7 @@ llm = Ollama(
 # ]
 # response = llm.chat(messages)
 
-#Completion
+# Completion
 # response = llm.complete("What is the capital of France?")
 
 # print(response)
