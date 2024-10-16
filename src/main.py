@@ -32,6 +32,8 @@ settings = Settings()
 # Define the HTTPBearer security scheme
 security_scheme = HTTPBearer(auto_error=False)
 
+# HELPERS #####################################################################################
+
 # Authentication Dependency
 async def get_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
     logging.debug(f"get_api_key() called with credentials: {credentials}")
@@ -128,7 +130,38 @@ async def forward_request(
         logging.error(f"Unhandled exception: {e}")
         raise HTTPException(status_code=500, detail="Request forwarding failed")
 
+# Helper function to forward GET requests
+async def forward_get_request(endpoint: str) -> Response:
+    url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
+    logging.debug(f"Forwarding GET request to {url}")
 
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            content = await response.aread()
+            return Response(
+                content=content,
+                status_code=response.status_code,
+                media_type=response.headers.get('Content-Type', 'application/json')
+            )
+    except httpx.HTTPStatusError as exc:
+        logging.error(
+            f"Error response {exc.response.status_code} from Ollama: {exc.response.text}"
+        )
+        raise HTTPException(
+            status_code=exc.response.status_code, detail=exc.response.text
+        )
+    except httpx.RequestError as exc:
+        logging.error(f"Request forwarding failed: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Request forwarding failed: {exc}"
+        )
+    except Exception as e:
+        logging.error(f"Unhandled exception: {e}")
+        raise HTTPException(status_code=500, detail="Request forwarding failed")
+    
+# APIs #####################################################################################
 
 # Route handlers
 @app.post("/api/generate")
@@ -187,47 +220,6 @@ async def embed(
         stream=request_data.stream,
     )
 
-# @app.get("/api/tags")
-# async def get_tags(api_key: str = Security(get_api_key)):
-#     username = token_manager.get_user_by_token(api_key)
-#     logging.debug(f"Tags request made by user: {username}")
-
-#     return await forward_request(
-#         endpoint="/api/tags",
-#         payload={},  # No payload for GET request
-#         stream=False,
-#     )
-
-# Helper function to forward GET requests
-async def forward_get_request(endpoint: str) -> Response:
-    url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
-    logging.debug(f"Forwarding GET request to {url}")
-
-    try:
-        async with httpx.AsyncClient(timeout=None) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            content = await response.aread()
-            return Response(
-                content=content,
-                status_code=response.status_code,
-                media_type=response.headers.get('Content-Type', 'application/json')
-            )
-    except httpx.HTTPStatusError as exc:
-        logging.error(
-            f"Error response {exc.response.status_code} from Ollama: {exc.response.text}"
-        )
-        raise HTTPException(
-            status_code=exc.response.status_code, detail=exc.response.text
-        )
-    except httpx.RequestError as exc:
-        logging.error(f"Request forwarding failed: {exc}")
-        raise HTTPException(
-            status_code=500, detail=f"Request forwarding failed: {exc}"
-        )
-    except Exception as e:
-        logging.error(f"Unhandled exception: {e}")
-        raise HTTPException(status_code=500, detail="Request forwarding failed")
 
 # GET /api/tags endpoint
 @app.get("/api/tags")
