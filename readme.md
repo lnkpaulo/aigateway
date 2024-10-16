@@ -135,11 +135,11 @@ The application api documentation will be accessible at `http://localhost:8000/d
 #### Non-Streaming Request
 
 ```bash
-curl -X POST 'http://localhost:8000/generate' \
+curl -X POST 'http://localhost:8000/api/generate' \
   -H 'Authorization: Bearer token_for_user1' \
   -H 'Content-Type: application/json' \
   -d '{
-        "model": "llama3.1",
+        "model": "llama3.2",
         "prompt": "Why is the sky blue?",
         "stream": false
       }'
@@ -156,11 +156,11 @@ curl -X POST 'http://localhost:8000/generate' \
 #### Streaming Request
 
 ```bash
-curl -X POST 'http://localhost:8000/generate' \
+curl -X POST 'http://localhost:8000/api/generate' \
   -H 'Authorization: Bearer token_for_user1' \
   -H 'Content-Type: application/json' \
   -d '{
-        "model": "llama3.1",
+        "model": "llama3.2",
         "prompt": "Why is the sky blue?"
       }'
 ```
