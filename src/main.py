@@ -133,7 +133,7 @@ async def forward_request(
 # Route handlers
 @app.post("/api/generate")
 async def generate(
-    request_data: GenerateRequest, api_key: str = Depends(get_api_key)
+    request_data: GenerateRequest, api_key: str = Security(get_api_key)
 ):
     username = token_manager.get_user_by_token(api_key)
     logging.debug(f"Generate request made by user: {username}")
@@ -150,7 +150,7 @@ async def generate(
 
 @app.post("/api/chat")
 async def chat(
-    request_data: ChatRequest, api_key: str = Depends(get_api_key)
+    request_data: ChatRequest, api_key: str = Security(get_api_key)
 ):
     username = token_manager.get_user_by_token(api_key)
     logging.debug(f"Chat request made by user: {username}")
@@ -172,7 +172,7 @@ class EmbedRequest(BaseRequest):
 # Embed endpoint
 @app.post("/api/embed")
 async def embed(
-    request_data: EmbedRequest, api_key: str = Depends(get_api_key)
+    request_data: EmbedRequest, api_key: str = Security(get_api_key)
 ):
     username = token_manager.get_user_by_token(api_key)
     logging.debug(f"Embeddings request made by user: {username}")
@@ -188,7 +188,7 @@ async def embed(
     )
 
 # @app.get("/api/tags")
-# async def get_tags(api_key: str = Depends(get_api_key)):
+# async def get_tags(api_key: str = Security(get_api_key)):
 #     username = token_manager.get_user_by_token(api_key)
 #     logging.debug(f"Tags request made by user: {username}")
 
@@ -231,7 +231,7 @@ async def forward_get_request(endpoint: str) -> Response:
 
 # GET /api/tags endpoint
 @app.get("/api/tags")
-async def get_tags(api_key: str = Depends(get_api_key)):
+async def get_tags(api_key: str = Security(get_api_key)):
     username = token_manager.get_user_by_token(api_key)
     logging.debug(f"Tags request made by user: {username}")
 
