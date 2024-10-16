@@ -1,6 +1,9 @@
-# token_manager.py
+# # token_manager.py
 import sqlite3
 import secrets
+from datetime import datetime, timezone
+import uuid
+
 
 from models import Settings
 settings = Settings()
@@ -16,20 +19,29 @@ class TokenManager:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS tokens (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
                     user TEXT NOT NULL,
                     api_name TEXT NOT NULL,
                     token TEXT NOT NULL,
-                    UNIQUE(user, api_name)
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT,
+                    UNIQUE(user, api_name),
+                    UNIQUE(user_id)
                 )
             ''')
             conn.commit()
 
-    def generate_token(self, user: str, api_name: str):
+    def generate_token(self, user: str, api_name: str, expires_at: str = None):
         token = secrets.token_hex(32)  # Generate a secure, unique token
+        user_id = str(uuid.uuid4())  # Generate a unique user_id using UUID
+        created_at = datetime.now(timezone.utc).isoformat()  # Get current UTC time in ISO 8601 format
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute('INSERT INTO tokens (user, api_name, token) VALUES (?, ?, ?)', (user, api_name, token))
+                cursor.execute(
+                    'INSERT INTO tokens (user_id, user, api_name, token, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+                    (user_id, user, api_name, token, created_at, expires_at)
+                )
                 conn.commit()
                 return token
             except sqlite3.IntegrityError:
@@ -51,8 +63,9 @@ class TokenManager:
     def list_users(self):
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT user, api_name FROM tokens')
+            cursor.execute('SELECT user_id, user, api_name, created_at, expires_at FROM tokens')
             return cursor.fetchall()
+
 
     def revoke_token(self, user: str, api_name: str):
         with sqlite3.connect(self.db_file) as conn:
