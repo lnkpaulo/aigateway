@@ -202,7 +202,7 @@ curl -X POST 'http://localhost:8000/api/chat' \
 #### Streaming Chat
 
 ```bash
-curl -X POST 'http://localhost:8000/chat' \
+curl -X POST 'http://localhost:8000/api/chat' \
   -H 'Authorization: Bearer token_for_user1' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -223,7 +223,7 @@ curl -X POST 'http://localhost:8000/chat' \
 ### Get Model Tags
 
 ```bash
-curl -X GET 'http://localhost:8000/tags' \
+curl -X GET 'http://localhost:8000/api/tags' \
   -H 'Authorization: Bearer token_for_user1'
 ```
 
@@ -279,7 +279,8 @@ curl -X GET 'http://localhost:8000/tags' \
 ## Future Enhancements
 
 - **Source Code**: Optimize source code to improve performance and maintenance. 
-- **Database Integration**: Replace `tokens.json` with a database for better scalability and security.
+- **Database Integration**: Replace `tokens.json` with a database for betcurl -X GET 'http://localhost:8000/api/tags' \
+  -H 'Authorization: Bearer token_for_user1'ter scalability and security.
 - **Additional Endpoints**: Support more Ollama API endpoints.
 - **User Management**: Implement user registration, token generation, and revocation endpoints.
 - **Error Handling**: Enhance error messages and logging for better diagnostics.
