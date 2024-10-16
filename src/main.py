@@ -139,7 +139,7 @@ async def generate(
     logging.debug(f"Generate request made by user: {username}")
 
     # Prepare payload for forwarding
-    payload = request_data.dict(exclude_unset=True)
+    payload = request_data.model_dump(exclude_unset=True)
     payload.update(request_data.extra_params)
 
     return await forward_request(
@@ -156,11 +156,50 @@ async def chat(
     logging.debug(f"Chat request made by user: {username}")
 
     # Prepare payload for forwarding
-    payload = request_data.dict(exclude_unset=True)
+    payload = request_data.model_dump(exclude_unset=True)
     payload.update(request_data.extra_params)
 
     return await forward_request(
         endpoint="/api/chat",
+        payload=payload,
+        stream=request_data.stream,
+    )
+
+# @app.post("/api/embed")
+# async def chat(
+#     request_data: ChatRequest, api_key: str = Depends(get_api_key)
+# ):
+#     username = token_manager.get_user_by_token(api_key)
+#     logging.debug(f"Embeddings request made by user: {username}")
+
+#     # Prepare payload for forwarding
+#     payload = request_data.model_dump(exclude_unset=True)
+#     payload.update(request_data.extra_params)
+
+#     return await forward_request(
+#         endpoint="/api/embed",
+#         payload=payload,
+#         stream=request_data.stream,
+#     )
+
+# Request model for embedding
+class EmbedRequest(BaseRequest):
+    input: str
+
+# Embed endpoint
+@app.post("/api/embed")
+async def embed(
+    request_data: EmbedRequest, api_key: str = Depends(get_api_key)
+):
+    username = token_manager.get_user_by_token(api_key)
+    logging.debug(f"Embeddings request made by user: {username}")
+
+    # Prepare payload for forwarding
+    payload = request_data.model_dump(exclude_unset=True)
+    payload.update(request_data.extra_params)
+
+    return await forward_request(
+        endpoint="/api/embed",
         payload=payload,
         stream=request_data.stream,
     )
