@@ -278,13 +278,12 @@ curl -X GET 'http://localhost:8000/api/tags' \
 
 ## Future Enhancements
 
-- **Source Code**: Optimize source code to improve performance and maintenance. 
-- **Database Integration**: Replace `tokens.json` with a database for betcurl -X GET 'http://localhost:8000/api/tags' \
-  -H 'Authorization: Bearer token_for_user1'ter scalability and security.
-- **Additional Endpoints**: Support more Ollama API endpoints.
-- **User Management**: Implement user registration, token generation, and revocation endpoints.
-- **Error Handling**: Enhance error messages and logging for better diagnostics.
-- **Rate Limiting**: Add rate limiting per user to prevent abuse.
+- [ ] **Source Code**: Optimize source code to improve performance and maintenance. 
+- [ ] **Database Integration**: Replace `tokens.json` with a database for better scalability and security.
+- [ ] **Additional Endpoints**: Support more Ollama API endpoints.
+- [ ] **User Management**: Implement user registration, token generation, and revocation endpoints.
+- [ ] **Error Handling**: Enhance error messages and logging for better diagnostics.
+- [ ] **Rate Limiting**: Add rate limiting per user to prevent abuse.
 
 ## License
 
