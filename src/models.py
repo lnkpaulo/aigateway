@@ -1,12 +1,14 @@
 # src/models.py
 import os
+from typing import Optional
 from pydantic_settings import BaseSettings
 
 # Settings class
 class Settings(BaseSettings):
+    BASE_PATH: str = "/api"  # Default prefix
     OLLAMA_BASE_URL: str
     TOKEN_DB_PATH: str
-    CLI_API_KEY_Test: str
+    CLI_API_KEY_Test: Optional[str] = None
 
     class Config:
         # env_file = ".env"

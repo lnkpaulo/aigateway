@@ -1,3 +1,0 @@
-# .env
-OLLAMA_BASE_URL=http://localhost:11434
-TOKEN_DB_PATH=tokens.db

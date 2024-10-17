@@ -11,7 +11,6 @@ settings = Settings()
 # API key/token
 API_KEY = settings.CLI_API_KEY_Test
 
-
 # Create an Ollama Client instance with the headers set
 client = Client(
     host="http://localhost:8000",
@@ -24,26 +23,31 @@ client = Client(
 
 llm = Ollama(
     client=client,
-    model="llama3.2",
+    model="llama3.2"
 )
 
 #Chat
-# messages = [
-#     ChatMessage(
-#         role="system", content="You are a pirate with a colorful personality"
-#     ),
-#     ChatMessage(role="user", content="What is your name"),
-# ]
-# response = llm.chat(messages)
+messages = [
+    ChatMessage(
+        role="system", content="You are a pirate with a colorful personality"
+    ),
+    ChatMessage(role="user", content="What is your name"),
+]
+response = llm.chat(messages)
+print("-- CHAT --------------------\n")
+print(response)
 
 # Completion
-# response = llm.complete("What is the capital of France?")
+response = llm.complete("What is the capital of France?")
+print("-- COMPLETION --------------------\n")
+print(response)
 
-# print(response)
-
-
+# Stream
 response = llm.stream_complete("Who is Paul Graham?")
+print("-- STREAM --------------------\n")
 for r in response:
     print(r.delta, end="")
 
+print("\n-- END --\n")
 
+# from project root run "python -m examples.llamaindex.ollama_llamaindex"
