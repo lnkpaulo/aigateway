@@ -1,10 +1,12 @@
 # src/models.py
 import os
 from typing import Optional
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 # Settings class
 class Settings(BaseSettings):
+    LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")  # Default to INFO if not set
     BASE_PATH: str = "/api"  # Default prefix
     OLLAMA_BASE_URL: str
     TOKEN_DB_PATH: str

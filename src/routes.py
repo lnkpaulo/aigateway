@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from models import Settings
 from libs.token_manager import TokenManager
 
+logger = logging.getLogger(__name__)
+
 # Initialize TokenManager and Settings
 token_manager = TokenManager()
 settings = Settings()
@@ -23,7 +25,7 @@ security_scheme = HTTPBearer(auto_error=False)
 
 # Authentication Dependency
 async def get_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    # logging.debug(f"get_api_key() called with credentials: {credentials}")
+    # logger.debug(f"get_api_key() called with credentials: {credentials}")
     if credentials and credentials.scheme == "Bearer":
         if token_manager.validate_token(credentials.credentials):
             return credentials.credentials
@@ -64,16 +66,16 @@ async def forward_request(
     stream: bool,
 ) -> Response:
     url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
-    logging.debug(f"Forwarding request to {url} with payload: {payload}")
+    logger.debug(f"Forwarding request to {url} with payload: {payload}")
 
     try:
         if stream:
-            logging.debug("Streaming response enabled.")
+            logger.debug("Streaming response enabled.")
             async def stream_response():
                 async with httpx.AsyncClient(timeout=None) as client:
                     async with client.stream("POST", url, json=payload) as response:
                         if response.status_code != 200:
-                            logging.error(f"Failed to fetch streaming data: {response.status_code}")
+                            logger.error(f"Failed to fetch streaming data: {response.status_code}")
                             raise HTTPException(status_code=response.status_code, detail=response.text)
                         async for chunk in response.aiter_bytes():
                             yield chunk
@@ -83,35 +85,35 @@ async def forward_request(
             async with httpx.AsyncClient(timeout=None) as client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
-                logging.debug(f"Response from Ollama: {response.status_code}")
+                logger.debug(f"Response from Ollama: {response.status_code}")
 
                 content = await response.aread()
                 content_text = content.decode("utf-8")
-                logging.debug(f"Response content from Ollama: {content_text}")
+                logger.debug(f"Response content from Ollama: {content_text}")
 
                 # Parse the JSON content
                 try:
                     json_obj = json.loads(content_text)
                 except json.JSONDecodeError as e:
-                    logging.error(f"JSON decoding error: {e}")
+                    logger.error(f"JSON decoding error: {e}")
                     raise HTTPException(status_code=500, detail="Invalid JSON response from Ollama")
                 
                 return JSONResponse(content=json_obj, status_code=response.status_code)
 
     except httpx.HTTPStatusError as exc:
-        logging.error(f"Error response {exc.response.status_code} from Ollama: {exc.response.text}")
+        logger.error(f"Error response {exc.response.status_code} from Ollama: {exc.response.text}")
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
     except httpx.RequestError as exc:
-        logging.error(f"Request forwarding failed: {exc}")
+        logger.error(f"Request forwarding failed: {exc}")
         raise HTTPException(status_code=500, detail=f"Request forwarding failed: {exc}")
     except Exception as e:
-        logging.error(f"Unhandled exception: {e}")
+        logger.error(f"Unhandled exception: {e}")
         raise HTTPException(status_code=500, detail="Request forwarding failed")
 
 # Helper function to forward GET requests
 async def forward_get_request(endpoint: str) -> Response:
     url = f"{settings.OLLAMA_BASE_URL}{endpoint}"
-    logging.debug(f"Forwarding GET request to {url}")
+    logger.debug(f"Forwarding GET request to {url}")
     try:
         async with httpx.AsyncClient(timeout=None) as client:
             response = await client.get(url)
@@ -123,13 +125,13 @@ async def forward_get_request(endpoint: str) -> Response:
                 media_type=response.headers.get('Content-Type', 'application/json')
             )
     except httpx.HTTPStatusError as exc:
-        logging.error(f"Error response {exc.response.status_code} from Ollama: {exc.response.text}")
+        logger.error(f"Error response {exc.response.status_code} from Ollama: {exc.response.text}")
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
     except httpx.RequestError as exc:
-        logging.error(f"Request forwarding failed: {exc}")
+        logger.error(f"Request forwarding failed: {exc}")
         raise HTTPException(status_code=500, detail=f"Request forwarding failed: {exc}")
     except Exception as e:
-        logging.error(f"Unhandled exception: {e}")
+        logger.error(f"Unhandled exception: {e}")
         raise HTTPException(status_code=500, detail="Request forwarding failed")
 
 # APIs #####################################################################################
@@ -138,7 +140,7 @@ async def forward_get_request(endpoint: str) -> Response:
 @router.post("/generate")
 async def generate(request_data: GenerateRequest, api_key: str = Security(get_api_key)):
     username = token_manager.get_user_by_token(api_key)
-    logging.debug(f"Generate request made by user: {username}")
+    logger.debug(f"Generate request made by user: {username}")
 
     # Prepare payload for forwarding
     payload = request_data.model_dump(exclude_unset=True)
@@ -149,7 +151,7 @@ async def generate(request_data: GenerateRequest, api_key: str = Security(get_ap
 @router.post("/chat")
 async def chat(request_data: ChatRequest, api_key: str = Security(get_api_key)):
     username = token_manager.get_user_by_token(api_key)
-    logging.debug(f"Chat request made by user: {username}")
+    logger.debug(f"Chat request made by user: {username}")
 
     payload = request_data.model_dump(exclude_unset=True)
     payload.update(request_data.extra_params)
@@ -162,7 +164,7 @@ class EmbedRequest(BaseRequest):
 @router.post("/embed")
 async def embed(request_data: EmbedRequest, api_key: str = Security(get_api_key)):
     username = token_manager.get_user_by_token(api_key)
-    logging.debug(f"Embeddings request made by user: {username}")
+    logger.debug(f"Embeddings request made by user: {username}")
 
     payload = request_data.model_dump(exclude_unset=True)
     payload.update(request_data.extra_params)
@@ -172,6 +174,6 @@ async def embed(request_data: EmbedRequest, api_key: str = Security(get_api_key)
 @router.get("/tags")
 async def get_tags(api_key: str = Security(get_api_key)):
     username = token_manager.get_user_by_token(api_key)
-    logging.debug(f"Tags request made by user: {username}")
+    logger.debug(f"Tags request made by user: {username}")
 
     return await forward_get_request(endpoint="/api/tags")
