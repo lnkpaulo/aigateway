@@ -23,7 +23,7 @@ security_scheme = HTTPBearer(auto_error=False)
 
 # Authentication Dependency
 async def get_api_key(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    logging.debug(f"get_api_key() called with credentials: {credentials}")
+    # logging.debug(f"get_api_key() called with credentials: {credentials}")
     if credentials and credentials.scheme == "Bearer":
         if token_manager.validate_token(credentials.credentials):
             return credentials.credentials
@@ -38,12 +38,24 @@ class BaseRequest(BaseModel):
     class Config:
         extra = "allow"
 
+# Define a Message model that allows extra fields
+""" 
+Message Pydantic model that allows extra fields and accepts any type of values for those fields.
+White this, we can support any type of values for the fields that are not defined in the model.
+"""
+class Message(BaseModel):
+    role: str
+    content: str
+
+    class Config:
+        extra = 'allow'
+
 class GenerateRequest(BaseRequest):
     prompt: str
 
 class ChatRequest(BaseRequest):
     system: Optional[str] = None
-    messages: List[Dict[str, str]]
+    messages: List[Message]
 
 # Helper function to forward requests
 async def forward_request(
