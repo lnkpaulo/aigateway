@@ -1,8 +1,9 @@
 # .env example
 
 # If BASE_PATH is not set, so the default "/api" will be used
-# BASE_PATH="/api"
-# CLI_API_KEY_Test="test-key"
 LOG_LEVEL=DEBUG
-OLLAMA_BASE_URL="http://localhost:11434"
-TOKEN_DB_PATH="tokens.db"
+LOG_FILE_LEVEL=DEBUG
+BASE_PATH="/api"
+OLLAMA_BASE_URL=http://localhost:11434
+TOKEN_DB_PATH=tokens.db
+CLI_API_KEY_Test=""
