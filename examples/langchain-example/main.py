@@ -37,3 +37,8 @@ messages = [
 
 ai_msg = llm.invoke(messages)
 print(ai_msg)
+
+# ai_msg = llm.stream(messages)
+# for r in ai_msg:
+#     print(r, end="")ai_msg = llm.invoke(messages)
+print(ai_msg)
