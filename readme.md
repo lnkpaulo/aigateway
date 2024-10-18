@@ -1,6 +1,10 @@
 # AI Gateway
 
-This project is a FastAPI application that acts as a gateway to the Ollama AI API, forwarding requests to endpoints like `/api/generate`, `/api/chat`, `/api/embed`, and `/api/tags`. It supports multiple users with unique authentication tokens and handles both streaming and non-streaming responses.
+This project is a FastAPI application that acts as a gateway to the Ollama API, forwarding requests to endpoints like `/api/generate`, `/api/chat`, `/api/embed`, and `/api/tags`. It supports multiple users with unique authentication tokens and handles both streaming and non-streaming responses.
+
+This project was only possible due to the excellent work done by [Ollama](https://ollama.com/) team, whose work has been shared with the community. Thank you!
+
+**Note: This is a work in progress, and due to limited time, I'm not able to maintain this repository. Feel free to fork it and make your own changes.**
 
 ## Features
 
@@ -8,8 +12,8 @@ This project is a FastAPI application that acts as a gateway to the Ollama AI AP
 - **Authentication**: Uses the `Authorization` header with the `Bearer` token scheme.
 - **Multiple Users**: Supports different authentication tokens for different users via a local token store.
 - **Streaming Responses**: Handles both streaming and non-streaming responses from the Ollama API.
-- **Dynamic HTTP Methods**: Supports both `POST` and `GET` requests depending on the endpoint.
-- **Configuration**: Reads configuration from a `.env` file and manages user tokens via `tokens.json`.
+- **Configuration**: Reads configuration from a `.env` file and manages user tokens via a SQLite database (`tokens.db`).
+- **Token Management CLI**: Provides command-line and interactive interfaces for managing API tokens.
 
 ## Table of Contents
 
@@ -33,6 +37,9 @@ This project is a FastAPI application that acts as a gateway to the Ollama AI AP
       - [Streaming Chat](#streaming-chat)
     - [Get Model Tags](#get-model-tags)
   - [Token Management](#token-management)
+    - [Command-Line Interface (CLI)](#command-line-interface-cli)
+    - [Interactive CLI](#interactive-cli)
+  - [Configuration](#configuration)
   - [Security Considerations](#security-considerations)
   - [Future Enhancements](#future-enhancements)
   - [License](#license)
@@ -71,60 +78,63 @@ This project is a FastAPI application that acts as a gateway to the Ollama AI AP
 
    ```dotenv
    # .env
+   LOG_LEVEL=DEBUG
+   LOG_FILE_LEVEL=DEBUG
+   BASE_PATH="/api"  # If BASE_PATH is not set, the default "/api" will be used
    OLLAMA_BASE_URL=http://localhost:11434
+   TOKEN_DB_PATH=tokens.db
+   CLI_API_KEY_Test=""
    ```
 
-   Adjust the `OLLAMA_BASE_URL` if your Ollama API is running on a different host or port.
+   **Configuration Options:**
 
-5. **Create a `tokens.json` File**
+   - `LOG_LEVEL`: Sets the logging level for the application (e.g., DEBUG, INFO, WARNING).
+   - `LOG_FILE_LEVEL`: Sets the logging level for the log file.
+   - `BASE_PATH`: The base path for the API endpoints. Defaults to `/api` if not set.
+   - `OLLAMA_BASE_URL`: The base URL where the Ollama AI API is accessible.
+   - `TOKEN_DB_PATH`: The path to the SQLite database file for storing tokens.
+   - `CLI_API_KEY_Test`: Placeholder for future CLI API key configurations.
 
-   Create a `tokens.json` file in the project root directory to store user tokens:
+5. **Initialize the Token Database**
 
-   ```json
-   {
-     "user1": "token_for_user1",
-     "user2": "token_for_user2",
-     "user3": "token_for_user3"
-   }
-   ```
-
-   Replace the tokens with secure, unique tokens for each user.
+   The application uses a SQLite database (`tokens.db`) to manage user tokens. The database is initialize when the application starts up. If you want to reset the token database, delete the `tokens.db` file in the project root directory and restart the application.
 
 
 ## Running the Application
 
-Start the FastAPI application using run.sh:
+Start the FastAPI application using `run.sh`:
 
 ```bash
 ./run.sh
 ```
 
 The application will be accessible at `http://localhost:8000`.
-The application api documentation will be accessible at `http://localhost:8000/docs`.
+
+The API documentation will be accessible at `http://localhost:8000/docs`.
 
 ## Endpoints
 
 ### Generate Endpoint
 
-- **URL**: `http://localhost:8000/generate`
+- **URL**: `http://localhost:8000/api/generate`
 - **Method**: `POST`
 - **Authentication**: Required (`Authorization: Bearer <token>`)
 
 ### Chat Endpoint
 
-- **URL**: `http://localhost:8000/chat`
+- **URL**: `http://localhost:8000/api/chat`
 - **Method**: `POST`
 - **Authentication**: Required (`Authorization: Bearer <token>`)
 
 ### Embed Endpoint
 
-- **URL**: `http://localhost:8000/embed`
+- **URL**: `http://localhost:8000/api/embed`
 - **Method**: `POST`
 - **Authentication**: Required (`Authorization: Bearer <token>`)
 
 ### Tags Endpoint
 
-- **URL**: `http://localhost:8000/tags`
+- **URL**: `http://localhost:8000/api/tags`
 - **Method**: `GET`
 - **Authentication**: Required (`Authorization: Bearer <token>`)
 
@@ -264,27 +274,145 @@ curl -X GET 'http://localhost:8000/api/tags' \
 
 ## Token Management
 
-- **Adding Users**: Update the `tokens.json` file with new users and tokens.
-- **Removing Users**: Remove the user's entry from the `tokens.json` file.
-- **Token Validation**: Tokens are validated against the entries in `tokens.json`.
+The application uses a SQLite database (`tokens.db`) to manage user tokens. Two interfaces are provided for managing tokens: a Command-Line Interface (CLI) and an Interactive CLI.
 
-**Note:** The application reloads the token each time an api is called. No need to restart the application after modifying `tokens.json`
+### Command-Line Interface (CLI)
+
+Use `gen_api_key_cli.py` to manage API tokens via command-line arguments.
+
+**Usage:**
+
+```bash
+python gen_api_key_cli.py [options]
+```
+
+**Options:**
+
+- **Generate Token**
+
+  ```bash
+  python gen_api_key_cli.py -g <user> <api_key_name>
+  ```
+
+  *Generates a new token for the specified user with the given API key name.*
+
+- **List Users**
+
+  ```bash
+  python gen_api_key_cli.py -l
+  ```
+
+  *Lists all users and their tokens in a tabulated format.*
+
+- **Delete Token**
+
+  ```bash
+  python gen_api_key_cli.py -d <user> <api_key_name>
+  ```
+
+  *Deletes the specified API token for the given user.*
+
+- **Export Users**
+
+  ```bash
+  python gen_api_key_cli.py -e <filename>
+  ```
+
+  *Exports all users and their tokens to the specified file.*
+
+**Examples:**
+
+- **Generate a Token for User1:**
+
+  ```bash
+  python gen_api_key_cli.py -g user1 my_api_key
+  ```
+
+- **List All Users:**
+
+  ```bash
+  python gen_api_key_cli.py -l
+  ```
+
+- **Delete a Token:**
+
+  ```bash
+  python gen_api_key_cli.py -d user1 my_api_key
+  ```
+
+- **Export Users to CSV:**
+
+  ```bash
+  python gen_api_key_cli.py -e users_export.csv
+  ```
+
+### Interactive CLI
+
+Use `gen_api_key_cli_inter.py` for an interactive token management experience with prompts and menus.
+
+**Usage:**
+
+```bash
+python gen_api_key_cli_inter.py
+```
+
+**Features:**
+
+- **Generate a Token**: Prompts for username and API key name to generate a new token.
+- **List All Users**: Displays all users and their tokens in a formatted table.
+- **Delete a Token**: Prompts for username and API key name to delete a specific token.
+- **Export Users to File**: Prompts for a filename to export all users and tokens.
+- **Exit**: Exits the interactive menu.
+
+**Example Workflow:**
+
+1. **Start Interactive CLI:**
+
+   ```bash
+   python gen_api_key_cli_inter.py
+   ```
+
+2. **Main Menu:**
+
+   ```
+   What do you want to do?
+   1. Generate a token
+   2. List all users
+   3. Delete a token
+   4. Export users to file
+   5. Exit
+   ```
+
+3. **Select an Action:** Choose an option by navigating with arrow keys and pressing Enter.
+
+4. **Follow Prompts:** Depending on the selected action, follow the on-screen prompts to complete the task.
 
 ## Security Considerations
 
-- **Use Secure Tokens**: Generate strong, unique tokens for each user.
-- **HTTPS**: Consider running the application over HTTPS in production environments.
+- **Use Secure Tokens**: Generate strong, unique tokens for each user to prevent unauthorized access.
+- **HTTPS**: It is highly recommended to run the application over HTTPS in production environments to secure data in transit.
 - **Authentication**: All endpoints require authentication using the `Authorization` header with the `Bearer` scheme.
+- **Database Security**: Ensure that the `tokens.db` file is stored securely and access is restricted to authorized personnel only.
 
 ## Future Enhancements
 
-- [ ] **Source Code**: Optimize source code to improve performance and maintenance. 
-- [ ] **Database Integration**: Replace `tokens.json` with a database for better scalability and security.
-- [ ] **Additional Endpoints**: Support more Ollama API endpoints.
-- [ ] **User Management**: Implement user registration, token generation, and revocation endpoints.
+- [ ] **Source Code Optimization**: Improve performance and maintainability of the source code.
+- [x] **Database Integration**: Enhance database functionalities for better scalability and security.
+- [ ] **Additional Endpoints**: Support more Ollama AI API endpoints.
+- [ ] **User Management**: Implement user registration, token generation, and revocation endpoints via the API.
 - [ ] **Error Handling**: Enhance error messages and logging for better diagnostics.
-- [ ] **Rate Limiting**: Add rate limiting per user to prevent abuse.
+- [ ] **Rate Limiting**: Add rate limiting per user to prevent abuse and ensure fair usage.
+- [ ] **Dockerization**: Containerize the application for easier deployment and scalability.
+- [ ] **Unit Tests**: Implement comprehensive unit tests to ensure code reliability and facilitate future changes.
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+# Additional Notes
+
+- **Scripts Execution Permissions**: Make sure that `run.sh` and any other shell scripts have the appropriate execution permissions:
+
+  ```bash
+  chmod +x run.sh
+  ```
